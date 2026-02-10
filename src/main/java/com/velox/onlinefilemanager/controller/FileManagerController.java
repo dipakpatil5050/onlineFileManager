@@ -3,6 +3,7 @@ package com.velox.onlinefilemanager.controller;
 import com.velox.onlinefilemanager.service.FileStorageService;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -73,7 +74,7 @@ public class FileManagerController {
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                     .contentLength(fileToDownload.length())
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .body(new InputStreamResource(Files.newInputStream(fileToDownload.toPath())));
+                    .body(new FileSystemResource(fileToDownload));
 
         }catch (IOException e){
             log.log(Level.SEVERE,"Exception during download file", e.getMessage());
