@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <title>File Manager</title>
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+            font-family: "Poppins", sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg,#667eea,#764ba2);
+            min-height: 100vh;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            background: #fff;
+            padding: 25px 30px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* Upload */
+
+        .upload-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        input[type="file"] {
+            flex: 1;
+        }
+
+        button {
+            padding: 8px 15px;
+            background: #667eea;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #5567d9;
+        }
+
+        .danger {
+            background: #e74c3c;
+        }
+
+        /* Search */
+
+        .search-box {
+            margin: 15px 0;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 8px;
+        }
+
+        /* Table */
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #667eea;
+            color: white;
+        }
+
+        th, td {
+            padding: 12px;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #ddd;
+        }
+
+        tbody tr:hover {
+            background: #f1f4ff;
+        }
+
+        /* Status */
+
+        .status {
+            text-align: center;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+
+        .success { color: green; }
+        .error { color: red; }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+    <h1>📁 File Manager (REST)</h1>
+
+    <!-- Upload -->
+
+    <div class="upload-box">
+
+        <input type="file" id="fileInput">
+
+        <button onclick="uploadFile()">
+            Upload
+        </button>
+
+    </div>
+
+
+    <!-- Status -->
+
+    <div id="status" class="status"></div>
+
+
+    <!-- Search -->
+
+    <div class="search-box">
+
+        <input type="text"
+               id="searchInput"
+               placeholder="Search files..."
+               onkeyup="filterFiles()">
+
+    </div>
+
+
+    <!-- Table -->
+
+    <table>
+
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Size (KB)</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+
+        <tbody id="fileTable">
+        </tbody>
+
+    </table>
+
+</div>
+
+
+<!-- ================= JS ================= -->
+
+<script>
+
+    document.addEventListener("DOMContentLoaded", loadFiles);
+
+
+    /* ================= LOAD FILES ================= */
+
+    async function loadFiles() {
+
+        try {
+
+            const res = await fetch("/files");
+
+            const files = await res.json();
+
+            renderTable(files);
+
+        } catch (err) {
+
+            showStatus("Failed to load files", true);
+        }
+    }
+
+
+    /* ================= RENDER ================= */
+
+    function renderTable(files) {
+
+        const tbody =
+            document.getElementById("fileTable");
+
+        tbody.innerHTML = "";
+
+        files.forEach((file, index) => {
+
+            const row = document.createElement("tr");
+
+            row.classList.add("file-row");
+
+            row.innerHTML = `
+
+                <td>${index + 1}</td>
+
+                <td class="file-name">
+                    ${file.name}
+                </td>
+
+                <td>${file.size}</td>
+
+                <td>
+
+                    <button onclick="downloadFile('${file.name}')">
+                        ⬇ Download
+                    </button>
+
+                    <button class="danger"
+                            onclick="deleteFile('${file.name}')">
+                        🗑 Delete
+                    </button>
+
+                </td>
+            `;
+
+            tbody.appendChild(row);
+        });
+    }
+
+
+    /* ================= UPLOAD ================= */
+
+    async function uploadFile() {
+
+        const input =
+            document.getElementById("fileInput");
+
+        if (!input.files.length) {
+            showStatus("Select a file first", true);
+            return;
+        }
+
+        const formData = new FormData();
+
+        formData.append("file", input.files[0]);
+
+        try {
+
+            const res = await fetch("/upload-file", {
+                method: "POST",
+                body: formData
+            });
+
+            if (!res.ok) throw new Error();
+
+            showStatus("Upload successful");
+
+            input.value = "";
+
+            loadFiles();
+
+        } catch {
+
+            showStatus("Upload failed", true);
+        }
+    }
+
+
+    /* ================= DOWNLOAD ================= */
+
+    function downloadFile(name) {
+
+        const url =
+            "/download-faster?fileName="
+            + encodeURIComponent(name);
+
+        window.location.href = url;
+    }
+
+
+    /* ================= DELETE ================= */
+
+    async function deleteFile(name) {
+
+        if (!confirm("Delete " + name + " ?")) return;
+
+        try {
+
+            const res = await fetch(
+                "/delete-file?fileName=" +
+                encodeURIComponent(name),
+                { method: "DELETE" }
+            );
+
+            if (!res.ok) throw new Error();
+
+            showStatus("Deleted");
+
+            loadFiles();
+
+        } catch {
+
+            showStatus("Delete failed", true);
+        }
+    }
+
+
+    /* ================= SEARCH ================= */
+
+    function filterFiles() {
+
+        const val =
+            document.getElementById("searchInput")
+                .value.toLowerCase();
+
+        document
+            .querySelectorAll(".file-row")
+            .forEach(row => {
+
+                const name =
+                    row.querySelector(".file-name")
+                        .innerText.toLowerCase();
+
+                row.style.display =
+                    name.includes(val) ? "" : "none";
+            });
+    }
+
+
+    /* ================= STATUS ================= */
+
+    function showStatus(msg, error=false) {
+
+        const el =
+            document.getElementById("status");
+
+        el.innerText = msg;
+
+        el.className =
+            "status " + (error ? "error" : "success");
+    }
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+
+    <title>File Manager</title>
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+            font-family: "Poppins", sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg,#667eea,#764ba2);
+            padding: 40px;
+            min-height: 100vh;
+        }
+
+        /* ================= CONTAINER ================= */
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        /* ================= UPLOAD ================= */
+
+        .upload-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input[type="file"] {
+            flex: 1;
+            padding: 8px;
+        }
+
+        button {
+            padding: 8px 15px;
+            background: #667eea;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #5567d9;
+        }
+
+        .danger {
+            background: #e74c3c;
+        }
+
+        .danger:hover {
+            background: #c0392b;
+        }
+
+        /* ================= SEARCH ================= */
+
+        .search-box {
+            margin-bottom: 15px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        /* ================= TABLE ================= */
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #667eea;
+            color: white;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #ddd;
+            transition: 0.2s;
+        }
+
+        tbody tr:hover {
+            background: #f1f4ff;
+        }
+
+        /* ================= STATUS ================= */
+
+        .status {
+            text-align: center;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+
+        .success { color: green; }
+        .error { color: red; }
+
+    </style>
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+    <h1>📁 File Manager</h1>
+
+    <!-- ================= UPLOAD ================= -->
+
+    <form class="upload-box"
+          method="post"
+          action="/upload-file"
+          enctype="multipart/form-data">
+
+        <input type="file"
+               name="file"
+               required>
+
+        <button type="submit">
+            Upload
+        </button>
+
+    </form>
+
+
+    <!-- Status Message -->
+    <div class="status"
+         th:if="${message}"
+         th:text="${message}">
+    </div>
+
+
+    <!-- ================= SEARCH ================= -->
+
+    <div class="search-box">
+
+        <input type="text"
+               id="searchInput"
+               placeholder="🔍 Search files..."
+               onkeyup="filterFiles()">
+
+    </div>
+
+
+    <!-- ================= FILE TABLE ================= -->
+
+    <table th:if="${!#lists.isEmpty(files)}">
+
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>File Name</th>
+            <th>Size (KB)</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+
+        <tbody id="fileTable">
+
+        <tr th:each="file, stat : ${files}"
+            class="file-row">
+
+            <td th:text="${stat.count}">1</td>
+
+            <td th:text="${file.name}"
+                class="file-name">
+                demo.pdf
+            </td>
+
+            <td th:text="${file.size}">
+                25
+            </td>
+
+            <td>
+
+                <!-- Download -->
+                <button
+                        th:onclick="|downloadFile('${file.name}')|">
+                    ⬇ Download
+                </button>
+
+                <!-- Delete -->
+                <button
+                        class="danger"
+                        th:onclick="|deleteFile('${file.name}')|">
+                    🗑 Delete
+                </button>
+
+            </td>
+
+        </tr>
+
+        </tbody>
+
+    </table>
+
+
+    <!-- Empty -->
+    <div class="status"
+         th:if="${#lists.isEmpty(files)}">
+
+        No Files Found
+
+    </div>
+
+</div>
+
+
+<!-- ================= JAVASCRIPT ================= -->
+
+<script>
+
+    /* ================= DOWNLOAD ================= */
+
+    function downloadFile(fileName) {
+
+        const url =
+            "/download-faster?fileName="
+            + encodeURIComponent(fileName);
+
+        window.location.href = url;
+    }
+
+
+    /* ================= DELETE ================= */
+
+    function deleteFile(fileName) {
+
+        if (!confirm("Delete " + fileName + " ?")) {
+            return;
+        }
+
+        fetch("/delete-file?fileName=" + encodeURIComponent(fileName), {
+            method: "DELETE"
+        })
+            .then(res => {
+
+                if(res.ok){
+                    location.reload();
+                }else{
+                    alert("Delete failed");
+                }
+
+            });
+    }
+
+
+    /* ================= SEARCH ================= */
+
+    function filterFiles() {
+
+        const input =
+            document.getElementById("searchInput")
+                .value.toLowerCase();
+
+        const rows =
+            document.querySelectorAll(".file-row");
+
+        rows.forEach(row => {
+
+            const name =
+                row.querySelector(".file-name")
+                    .innerText.toLowerCase();
+
+            if(name.includes(input)){
+                row.style.display = "";
+            }else{
+                row.style.display = "none";
+            }
+
+        });
+    }
+
+</script>
+
+
+</body>
+</html>

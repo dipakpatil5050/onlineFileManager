@@ -1,5 +1,6 @@
 package com.velox.onlinefilemanager.service;
 
+import com.velox.onlinefilemanager.entity.FileInfo;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -8,7 +9,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class FileStorageService {
@@ -46,5 +48,62 @@ public class FileStorageService {
         return fileToDownload;
     }
 
+
+    public List<FileInfo> listFiles() {
+
+        File directory = new File(STORAGE_DIRECTORY);
+
+        if (!directory.exists() || !directory.isDirectory()) {
+            return Collections.emptyList();
+        }
+
+        return Arrays.stream(directory.listFiles())
+                .filter(File::isFile)
+                .map(file -> {
+
+                    long sizeInKB = file.length() / 1024;
+
+                    if (sizeInKB == 0) {
+                        sizeInKB = 1; // minimum 1 KB
+                    }
+
+                    return new FileInfo(
+                            file.getName(),
+                            sizeInKB
+                    );
+                })
+                .sorted(Comparator.comparing(FileInfo::getName))
+                .collect(Collectors.toList());
+    }
+
+
+    public void delete(String fileName) {
+
+        try {
+
+            if (fileName.contains("..")) {
+                throw new SecurityException("Invalid file name");
+            }
+
+            File file = new File(STORAGE_DIRECTORY, fileName);
+
+            if (!file.exists()) {
+                throw new FileNotFoundException("File not found");
+            }
+
+            boolean deleted = file.delete();
+
+            if (!deleted) {
+                throw new IOException("Unable to delete file");
+            }
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Failed to delete file: " + fileName,
+                    e
+            );
+        }
+    }
 
 }
